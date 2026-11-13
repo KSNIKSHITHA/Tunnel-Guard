@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tunnelling ground-response and gas dashboard</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#E6ECEF; --panel:#F7F9FA; --panel2:#EAF0F2; --ink:#17252E; --mute:#586A75; --line:#C7D2D8;
+  --accent:#0E6584; --accent-soft:rgba(14,101,132,.17);
+  --lv0:#2F8F5E; --lv1:#C9971A; --lv2:#D9702A; --lv3:#C42F2A;
+  --s0:#B3B0A4; --s1:#97AAA2; --s2:#DCC58D; --s3:#AB8A70; --s4:#7C858F;
+  --tunnel:#3C4A54; --water:#2A78B4;
+  color-scheme:light;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D171E; --panel:#15232C; --panel2:#1B2D38; --ink:#E3ECF0; --mute:#8DA2AE; --line:#2B3F4B;
+    --accent:#5DB8DA; --accent-soft:rgba(93,184,218,.24);
+    --lv0:#4DBB86; --lv1:#E6B73C; --lv2:#F18B3F; --lv3:#F26258;
+    --s0:#5E5D56; --s1:#506461; --s2:#8F7F55; --s3:#6B5444; --s4:#454D56;
+    --tunnel:#A9BBC5; --water:#58A8E0; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D171E; --panel:#15232C; --panel2:#1B2D38; --ink:#E3ECF0; --mute:#8DA2AE; --line:#2B3F4B;
+  --accent:#5DB8DA; --accent-soft:rgba(93,184,218,.24);
+  --lv0:#4DBB86; --lv1:#E6B73C; --lv2:#F18B3F; --lv3:#F26258;
+  --s0:#5E5D56; --s1:#506461; --s2:#8F7F55; --s3:#6B5444; --s4:#454D56;
+  --tunnel:#A9BBC5; --water:#58A8E0; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Archivo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+.wrap{max-width:1360px;margin:0 auto;padding:16px clamp(12px,2vw,28px) 40px}
+header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+h1{font-size:clamp(21px,2.6vw,30px);font-weight:700;font-stretch:86%;margin:0;letter-spacing:-.01em}
+.sub{color:var(--mute);margin:3px 0 0}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.controls{margin:14px 0 12px;justify-content:space-between}
+.mute{color:var(--mute)}
+.btn{font:inherit;font-weight:600;font-size:13px;padding:6px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn.sm{padding:3px 9px;font-size:12px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .btn.primary{color:#07202B}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--panel)}
+.seg button{font:inherit;font-weight:600;font-size:13px;padding:6px 12px;border:0;background:none;color:var(--ink);cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:999px;font-weight:700;color:#fff}
+.pill.l0{background:var(--lv0)}.pill.l1{background:var(--lv1);color:#1B1400}.pill.l2{background:var(--lv2);color:#1B0C00}.pill.l3{background:var(--lv3)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.kpi{background:var(--panel);padding:12px 14px;min-width:0}
+.kpi .k{color:var(--mute);font-size:12.5px}
+.kpi .v{font-size:27px;font-weight:700;font-stretch:88%;line-height:1.15}
+.kpi .u{font-size:13px;color:var(--mute);font-weight:500;margin-left:3px}
+.kpi .n{font-size:12px;color:var(--mute);display:flex;gap:6px;align-items:flex-start;margin-top:2px}
+.dot{flex:none;width:9px;height:9px;border-radius:50%;margin-top:4px}
+.ew{margin-top:12px;padding:9px 14px;border-radius:6px;background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--lv0);display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.kpis.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.gc0{background:color-mix(in srgb,var(--lv0) 16%,transparent)}.gc1{background:color-mix(in srgb,var(--lv1) 30%,transparent)}.gc2{background:color-mix(in srgb,var(--lv2) 34%,transparent)}.gc3{background:color-mix(in srgb,var(--lv3) 38%,transparent);font-weight:700}
+.ew strong{font-weight:700}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:16px 0 0;overflow-x:auto}
+.tab{background:none;border:0;padding:10px 16px;font:inherit;font-weight:600;color:var(--mute);border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.grid{display:grid;gap:14px;margin-top:14px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g21{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+@media(max-width:1000px){.kpis,.kpis.c3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){.g2,.g21{grid-template-columns:1fr}}
+@media(max-width:640px){.kpis .v{font-size:22px}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;min-width:0}
+.panel h2{font-size:16px;margin:0 0 2px;font-weight:700;font-stretch:88%}
+.hint{color:var(--mute);font-size:12.5px;margin:0 0 8px}
+.chart{width:100%;height:auto;display:block}
+.chart .ax,.sec .ax{font-size:11px;fill:var(--mute)}
+.scroll{overflow-x:auto}
+.sec{display:block;width:100%;min-width:680px;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:12.5px;color:var(--mute)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:5px;vertical-align:-2px;border:1px solid var(--line)}
+table.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-weight:600;color:var(--mute);border-bottom:1px solid var(--line);padding:6px 8px;white-space:nowrap}
+.tbl td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.chip{display:inline-block;padding:1px 8px;border-radius:4px;font-size:12px;font-weight:700;border:1px solid currentColor}
+.c0{color:var(--lv0)}.c1{color:var(--lv1)}.c2{color:var(--lv2)}.c3{color:var(--lv3)}
+.alert{display:grid;grid-template-columns:1fr auto;gap:10px;padding:9px 0 9px 12px;border-bottom:1px solid var(--line);border-left:4px solid var(--lv0)}
+.alert.l1{border-left-color:var(--lv1)}.alert.l2{border-left-color:var(--lv2)}.alert.l3{border-left-color:var(--lv3)}
+.alert .act{color:var(--mute);font-size:12.5px;margin-top:2px}
+.alert.acked{opacity:.6}
+.split{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.stack{display:flex;height:22px;border-radius:4px;overflow:hidden;margin:8px 0}
+.stack span{display:block;height:100%}
+.sw{display:flex;gap:6px;align-items:center;font-size:13px;margin:3px 0}
+.sw i{width:12px;height:12px;border-radius:2px;display:inline-block}
+.sw b{margin-left:auto;font-weight:600}
+.slider{margin:10px 0}
+.slider label{display:flex;justify-content:space-between;font-weight:600;font-size:13px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+select{font:inherit;padding:6px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);width:100%}
+.out{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:6px 0 10px}
+.out div{background:var(--panel2);padding:8px 10px}
+.out .v{font-size:22px;font-weight:700;font-stretch:88%}
+.rule{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.foot{margin-top:22px;color:var(--mute);font-size:12.5px}
+
+/* ESP32 live panel */
+.live-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.live-controls input{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);min-width:230px;flex:1}
+.live-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
+.live-card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;min-width:0}
+.live-card .lk{font-size:12px;color:var(--mute)}.live-card .lv{font-size:24px;font-weight:700;overflow-wrap:anywhere}.live-card .lu{font-size:12px;color:var(--mute);margin-left:4px}
+.live-state{padding:12px;border:1px solid var(--line);border-left:5px solid var(--lv0);border-radius:6px;background:var(--panel);margin-top:12px}
+.live-state.l1{border-left-color:var(--lv1)}.live-state.l2{border-left-color:var(--lv2)}.live-state.l3{border-left-color:var(--lv3)}
+.live-note{font-size:12.5px;color:var(--mute);margin-top:10px}
+@media(max-width:800px){.live-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Tunnelling ground-response and gas dashboard</h1>
+      <p class="sub">Reach UG-2, twin-bore metro, EPB TBM drive 1. All data on this page is simulated.</p>
+    </div>
+    <div class="bar"><span id="statusPill"></span><button class="btn" id="themeBtn" type="button">Switch theme</button></div>
+  </header>
+
+  <div class="bar controls">
+    <div class="bar">
+      <span class="mute">Scenario</span>
+      <div class="seg" id="scenSeg" role="group" aria-label="Scenario">
+        <button type="button" data-sc="normal" aria-pressed="true">Normal drive</button>
+        <button type="button" data-sc="gradual" aria-pressed="false">Gradual increase</button>
+        <button type="button" data-sc="anomaly" aria-pressed="false">Sudden anomaly</button>
+        <button type="button" data-sc="gas" aria-pressed="false">Gas pocket ahead</button>
+      </div>
+    </div>
+    <div class="bar">
+      <span class="mute" id="simTime"></span>
+      <button class="btn" id="liveBtn" type="button">Pause</button>
+      <button class="btn" id="stepBtn" type="button">Step 6 h</button>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+  <div class="ew" id="ew"></div>
+
+  <nav class="tabs" role="tablist" aria-label="Dashboard pages">
+    <button class="tab" role="tab" data-tab="overview" aria-selected="true">Overview</button>
+    <button class="tab" role="tab" data-tab="monitor" aria-selected="false">Monitoring</button>
+    <button class="tab" role="tab" data-tab="predict" aria-selected="false">Prediction and what-if</button>
+    <button class="tab" role="tab" data-tab="gas" aria-selected="false">Gas safety</button>
+    <button class="tab" role="tab" data-tab="risk" aria-selected="false">Risk and response</button>
+    <button class="tab" role="tab" data-tab="esp32" aria-selected="false">ESP32 live sensors</button>
+  </nav>
+
+  <section id="tab-overview">
+    <div class="panel" style="margin-top:14px">
+      <h2>Longitudinal section at the face</h2>
+      <p class="hint" id="heroHint"></p>
+      <div class="scroll"><div id="hero"></div></div>
+      <div class="legend" id="heroLegend"></div>
+    </div>
+    <div class="grid g21">
+      <div class="panel">
+        <div class="split"><div><h2>Latest alerts</h2><p class="hint">Each alert carries the recommended response.</p></div><div id="mitBox"></div></div>
+        <div id="ovAlerts"></div>
+      </div>
+      <div class="panel"><h2>Structures near the face</h2><p class="hint">Predicted settlement, nearest first.</p><div id="ovBlds"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-monitor" hidden>
+    <div class="grid g2">
+      <div class="panel"><h2>Settlement trough at the monitoring section</h2><p class="hint">Measured points against the Peck curve, in mm (down is settlement).</p><div id="mTrough"></div></div>
+      <div class="panel"><h2>Face pressure</h2><p class="hint">Measured pressure, target band, and pore pressure at the tunnel axis, in kPa.</p><div id="mPress"></div></div>
+      <div class="panel"><h2>Vibration at nearest sensitive building</h2><p class="hint">Peak particle velocity in mm/s.</p><div id="mVib"></div></div>
+      <div class="panel"><h2>Tail-void grout fill</h2><p class="hint">Injected volume as a percentage of theoretical void.</p><div id="mGrout"></div></div>
+    </div>
+    <div class="grid g21">
+      <div class="panel"><h2>Buildings and utilities</h2><p class="hint">Predicted settlement and tilt from the current settlement profile.</p><div class="scroll" id="mBlds"></div></div>
+      <div class="panel"><h2>Data quality</h2><p class="hint">Sensors must be healthy before the numbers can be trusted.</p><div id="mSensors"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-predict" hidden>
+    <div class="grid g21">
+      <div class="panel"><h2>Settlement forecast, next 72 hours</h2><p class="hint">Measured history, Peck estimate from machine data, and a trend forecast with a 90% band.</p><div id="pFore"></div></div>
+      <div class="panel">
+        <h2>Time to threshold</h2><p class="hint">From the trend forecast.</p><div id="pTTB"></div>
+        <h2 style="margin-top:16px">What is driving volume loss</h2><p class="hint">Contribution to the current estimate.</p><div id="pDrivers"></div>
+      </div>
+    </div>
+    <div class="grid g2">
+      <div class="panel"><h2>Model performance</h2><p class="hint">One-step-ahead error against measured settlement. Swap these for your own ML models.</p><div class="scroll" id="pModels"></div></div>
+      <div class="panel">
+        <h2>What-if simulator</h2><p class="hint">Change the drive settings and see the predicted settlement before applying them.</p>
+        <div class="slider"><label for="wiP"><span>Face pressure</span><span id="wiPv"></span></label><input id="wiP" type="range" min="120" max="240" step="1" value="180"></div>
+        <div class="slider"><label for="wiR"><span>Advance rate</span><span id="wiRv"></span></label><input id="wiR" type="range" min="4" max="24" step="1" value="12"></div>
+        <div class="slider"><label for="wiV"><span>Ventilation</span><span id="wiVv"></span></label><input id="wiV" type="range" min="40" max="120" step="1" value="60"></div>
+        <div class="slider"><label for="wiZ"><span>Axis depth</span><span id="wiZv"></span></label><input id="wiZ" type="range" min="12" max="32" step="1" value="20"></div>
+        <div class="split" style="gap:8px;align-items:end">
+          <div style="flex:1;min-width:160px"><label for="wiSoil" class="mute" style="font-size:12.5px">Ground at the face</label>
+            <select id="wiSoil"><option value="sand">Silty sand</option><option value="mixed">Mixed face</option><option value="clay">Stiff clay</option></select></div>
+          <button class="btn" id="wiReset" type="button">Match current drive</button>
+        </div>
+        <div id="wiOut"></div>
+        <div id="wiGas"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-gas" hidden>
+    <div class="panel" style="margin-top:14px">
+      <div class="split"><div><h2>Gas at the cutterhead chamber</h2><p class="hint">Gas pockets in organic soft clay migrate into the chamber, faster when face pressure is low and ventilation is weak.</p></div><div id="gasMit"></div></div>
+      <div class="kpis c3" id="gasCards"></div>
+    </div>
+    <div class="grid g2">
+      <div class="panel"><h2>Readings by location</h2><p class="hint">Concentration falls with distance from the face as the ventilation dilutes it.</p><div class="scroll" id="gLoc"></div></div>
+      <div class="panel"><h2>Gas pockets ahead</h2><p class="hint">From the gas survey and probe drilling. Peaks assume today's ventilation and face pressure.</p><div class="scroll" id="gAhead"></div></div>
+    </div>
+    <div class="grid g2">
+      <div class="panel"><h2>Methane at the face</h2><p class="hint">%LEL with a 72-hour forecast from the gas survey map and today's drive settings, with a 90% band.</p><div id="gCH4"></div></div>
+      <div class="panel"><h2>Hydrogen sulfide</h2><p class="hint">Parts per million at the face.</p><div id="gH2S"></div></div>
+      <div class="panel"><h2>Oxygen</h2><p class="hint">Percent by volume. Lower is worse.</p><div id="gO2"></div></div>
+      <div class="panel"><h2>Carbon dioxide</h2><p class="hint">Percent by volume.</p><div id="gCO2"></div></div>
+      <div class="panel"><h2>Carbon monoxide</h2><p class="hint">Parts per million, mainly from diesel plant.</p><div id="gCO"></div></div>
+      <div class="panel"><h2>Ventilation airflow</h2><p class="hint">Cubic metres per second. The fan ramps up automatically when methane passes alert.</p><div id="gVent"></div></div>
+    </div>
+    <div class="grid g2">
+      <div class="panel"><h2>Gas response playbook</h2><p class="hint">Rules that fire from live gas readings.</p><div id="gPlay"></div></div>
+      <div class="panel"><h2>Methane time to threshold</h2><div id="gTTB"></div><h2 style="margin-top:16px">Gas alerts</h2><div id="gAlerts"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-risk" hidden>
+    <div class="grid g2">
+      <div class="panel"><h2>Risk matrix</h2><p class="hint">Likelihood is recalculated from live data. Consequence is fixed per hazard.</p><div id="rMatrix"></div></div>
+      <div class="panel"><h2>Risk register</h2><p class="hint">Score is likelihood times consequence.</p><div class="scroll" id="rRegister"></div></div>
+    </div>
+    <div class="grid g2">
+      <div class="panel">
+        <div class="split"><div><h2>Mitigation playbook</h2><p class="hint">Rules that fire from live readings.</p></div><div id="mitBox2"></div></div>
+        <div id="rPlay"></div>
+      </div>
+      <div class="panel"><h2>Alert log</h2><p class="hint">Acknowledge each alert once someone is acting on it.</p><div id="rAlerts"></div></div>
+    </div>
+  </section>
+
+
+  <section id="tab-esp32" hidden>
+    <div class="panel" style="margin-top:14px">
+      <h2>ESP32 live sensor connection</h2>
+      <p class="hint">Connect your laptop/phone to the ESP32 Wi-Fi network first, then read the live JSON endpoint. Default endpoint matches the companion firmware.</p>
+      <div class="live-controls">
+        <label for="espEndpoint" class="mute">ESP32 data URL</label>
+        <input id="espEndpoint" type="url" value="http://192.168.4.1/data" aria-label="ESP32 data URL">
+        <button class="btn primary" id="espConnect" type="button">Connect</button>
+        <button class="btn" id="espDisconnect" type="button">Disconnect</button>
+      </div>
+      <div class="split"><span id="espConnection" class="pill l0">NOT CONNECTED</span><span class="mute" id="espUpdated">No live readings received yet</span></div>
+      <div id="espLiveState" class="live-state"><strong>Waiting for ESP32 data</strong><div class="hint" style="margin:4px 0 0">Press Connect after joining the ESP32 Wi-Fi network.</div></div>
+      <div class="live-grid" id="espCards">
+        <div class="live-card"><div class="lk">MPU6050 movement</div><div class="lv">—</div><div class="lu">waiting</div></div>
+        <div class="live-card"><div class="lk">Soil moisture</div><div class="lv">—</div><div class="lu">ADC</div></div>
+        <div class="live-card"><div class="lk">Rain sensor</div><div class="lv">—</div><div class="lu">ADC</div></div>
+        <div class="live-card"><div class="lk">Gas sensor</div><div class="lv">—</div><div class="lu">raw ADC</div></div>
+        <div class="live-card"><div class="lk">Potentiometer</div><div class="lv">—</div><div class="lu">ADC / demo deformation</div></div>
+        <div class="live-card"><div class="lk">Accelerometer X</div><div class="lv">—</div><div class="lu">raw</div></div>
+        <div class="live-card"><div class="lk">Accelerometer Y</div><div class="lv">—</div><div class="lu">raw</div></div>
+        <div class="live-card"><div class="lk">Accelerometer Z</div><div class="lv">—</div><div class="lu">raw</div></div>
+      </div>
+      <p class="live-note">Gas sensor is shown as raw ADC only; do not treat it as ppm or %LEL without sensor-specific calibration. This is a student prototype, not a certified tunnel safety instrument. Keep the ESP32 and breadboard dry.</p>
+    </div>
+    <div class="grid g2">
+      <div class="panel"><h2>Latest live JSON</h2><p class="hint">Useful for checking whether the browser receives the ESP32 response.</p><pre id="espJson" style="white-space:pre-wrap;overflow-wrap:anywhere;margin:0;font-size:12px">No data yet.</pre></div>
+      <div class="panel"><h2>Connection checklist</h2><div class="rule"><span class="chip c0">1</span><div>Connect your laptop to the ESP32 Wi-Fi SSID configured in the firmware.</div></div><div class="rule"><span class="chip c0">2</span><div>Open this HTML dashboard in the browser and use <strong>http://192.168.4.1/data</strong> as the URL.</div></div><div class="rule"><span class="chip c0">3</span><div>If connection fails, open the URL directly in a browser. If JSON does not appear, check the ESP32 Serial Monitor and wiring.</div></div><div class="rule"><span class="chip c1">!</span><div>Dashboard's original settlement/TBM prediction pages remain simulated; the ESP32 Live Sensors tab is the live hardware feed.</div></div></div>
+    </div>
+  </section>
+
+  <p class="foot">Prototype note: the original settlement, TBM, prediction and gas-pocket model pages are simulated. Use the “ESP32 live sensors” tab for actual connected hardware ADC/MPU readings. Gas ADC is not ppm or %LEL without calibration. This dashboard is for demonstration only, not real tunnel safety decisions.</p>
+</div>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const TH=[10,15,20], NAMES=['Normal','Alert','Alarm','Action'], RISKN=['Low','Moderate','High','Extreme'];
+const D=6.6, AREA=Math.PI*D*D/4, Z0=20, TARGET=180, BAND=15, TICK_H=6, ROUTE_END=4800;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lvl=(v,t)=>{t=t||TH;return v>=t[2]?3:v>=t[1]?2:v>=t[0]?1:0};
+const hash=n=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x)};
+const nz=(t,k)=>(hash(t*13.7+k*91.3)+hash(t*7.1+k*53.9+1)+hash(t*3.3+k*17.7+2)-1.5)*2;
+const chFmt=c=>{const r=Math.round(c);return Math.floor(r/1000)+'+'+String(r%1000).padStart(3,'0')};
+const sgn=v=>(v<0?'\u2212':'')+Math.abs(v);
+/* gas limits are illustrative: alert, alarm, action */
+const GAS={CH4:{name:'Methane',unit:'%LEL',th:[10,20,25],lo:false,key:'ch4',dp:1},H2S:{name:'Hydrogen sulfide',unit:'ppm',th:[5,10,15],lo:false,key:'h2s',dp:1},CO:{name:'Carbon monoxide',unit:'ppm',th:[25,50,100],lo:false,key:'co',dp:1},CO2:{name:'Carbon dioxide',unit:'%',th:[0.5,1,1.5],lo:false,key:'co2',dp:2},O2:{name:'Oxygen',unit:'%',th:[20,19.5,18.5],lo:true,key:'o2',dp:1}};
+const LOCS=[['Cutterhead chamber',1],['Operator cabin',.3],['Mid tunnel, 400 m back',.5],['Portal shaft',.12]];
+const glvl=(g,v)=>{const G=GAS[g],t=G.th;return G.lo?(v<=t[2]?3:v<=t[1]?2:v<=t[0]?1:0):lvl(v,t)};
+function holdLevel(old,raw,v,th,lo){if(raw>=old)return raw;let l=old;while(l>raw){const t=th[l-1];const cleared=lo?v>t+0.15:v<t*0.9;if(!cleared)break;l--;}return l;}
+
+/* ---------- ground model ---------- */
+const LAY=[['Fill','--s0'],['Soft clay','--s1'],['Silty sand','--s2'],['Stiff clay','--s3'],['Weathered rock','--s4']];
+const bnd=c=>[0,3+Math.sin(c/40),11+2*Math.sin(c/70+1),20+5*Math.sin(c/55+2),34+3*Math.sin(c/90),46];
+function geoAt(c){
+  const b=bnd(c), f=clamp((b[3]-(Z0-D/2))/D,0,1);
+  return {f, g:1+0.12*f+0.25*4*f*(1-f), K:0.5-0.15*f,
+    label:f>.85?'Silty sand':f<.15?'Stiff clay':'Mixed face, silty sand over stiff clay'};
+}
+function peck(p){
+  const tgt=p.target||TARGET, z=p.z||Z0;
+  const dev=Math.max(0,tgt-5-p.P)+0.5*Math.max(0,p.P-(tgt+25));
+  const exc=Math.max(0,p.rate-14);
+  const g=1+0.12*p.f+0.25*4*p.f*(1-p.f), K=0.5-0.15*p.f;
+  const raw=0.30+0.03*dev+0.025*exc, VL=raw*g, i=K*z;
+  const S=VL/100*AREA/(i*2.5066)*1000;
+  return {VL,S,i,dev,exc,g,K,raw};
+}
+
+/* ---------- structures along the route ---------- */
+const BT=[
+ {n:'Masonry school block',tol:.9,off:9,w:30,h:20},
+ {n:'Heritage bungalow',tol:.75,off:6,w:16,h:16},
+ {n:'RC apartment, 8 storeys',tol:1.2,off:14,w:24,h:36},
+ {n:'Hospital wing',tol:.85,off:11,w:34,h:28},
+ {n:'Flyover pier',tol:1,off:5,w:5,h:26},
+ {n:'Water main, 900 mm',tol:1.1,off:3,w:40,h:0,pipe:true}
+];
+function buildingsIn(a,b){
+  const out=[];
+  for(let k=Math.floor(a/70);k<=Math.ceil(b/70);k++){
+    const c=k*70+((k*37)%25), t=BT[((k%BT.length)+BT.length)%BT.length];
+    if(c>=a&&c<=b) out.push(Object.assign({id:'B'+k,ch:c},t,{off:t.off+((k*7)%5)}));
+  }
+  return out;
+}
+
+/* ---------- gas model ---------- */
+function pocketsFor(sc){const o=[];for(let k=12;k<24;k++)o.push({ch:k*160+(k*53)%60,depth:9+(k*7)%10,s:.12+.04*(k%4),h2s:.4+.1*(k%5),w:22});if(sc==='gas'){o.push({ch:2650,depth:18,s:1,h2s:.8,w:22});o.push({ch:2800,depth:16,s:.55,h2s:.5,w:25});}return o;}
+function pocketEffect(c,pk){let e=0,h=0;pk.forEach(p=>{const w=Math.exp(-Math.pow((c-p.ch)/p.w,2))*Math.exp(-Math.pow((p.depth-Z0)/9,2));e+=p.s*w;h+=p.s*p.h2s*w;});return[e,h];}
+function gasFace(e,h,vent,dev,rate,t){
+  const n=k=>t==null?0:nz(t,k), vf=60/vent, mig=1+dev/40, k=e*vf*mig;
+  const ch4=Math.max(0,(1.5*vf+38*k)*(1+0.05*n(11))+0.3*n(12));
+  const h2s=Math.max(0,0.3*vf+18*h*vf*mig+0.12*n(13));
+  const co=Math.max(0,(3+0.4*rate)*vf+0.8*n(14));
+  const co2=Math.max(0.03,0.10*vf+0.45*k+0.008*n(15));
+  const o2=clamp(20.9-2.0*k-20.9*(ch4*0.05+co2)/100+0.05*n(16),14,20.9);
+  return {ch4,h2s,co,co2,o2};
+}
+function gasAt(face,dil,g){const v=face[GAS[g].key];if(g==='O2')return 20.9-(20.9-v)*dil;if(g==='CO2')return 0.04+(v-0.04)*dil;return v*dil;}
+function nextPockets(head,n,span){return st.pk.filter(p=>p.ch>head&&p.ch<=head+span).sort((a,b)=>a.ch-b.ch).slice(0,n);}
+const GACT={1:'Increase gas-reading frequency and check the ventilation duct and fan output.',2:'Boost ventilation, suspend hot work, restrict non-Ex-rated equipment, and probe ahead of the face.',3:'Evacuate the tunnel, isolate non-intrinsically-safe power, and re-enter only after a clear gas test.'};
+
+/* ---------- simulation ---------- */
+let st, live=true, tab='overview', scen='normal', aid=0;
+const ACT={
+ 1:'Check face pressure and grout fill, and move to 2-hourly readings on the affected section.',
+ 2:'Raise face pressure toward target, slow to 8 rings/day, and inject extra tail-void grout.',
+ 3:'Stop excavation, notify the site manager, inspect nearby buildings, and prepare compensation grouting.'
+};
+function simTime(t){
+  const d=new Date(2026,9,10,6,0); d.setHours(d.getHours()+(t-39)*TICK_H);
+  return d.toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false});
+}
+function pushAlert(lv,kind,msg,act,t){
+  st.alerts.unshift({id:'a'+(aid++),lv,kind,msg,act,time:simTime(t),ack:false});
+  if(st.alerts.length>40) st.alerts.pop();
+}
+function dropFn(t){
+  if(st.sc==='gradual') return Math.min(45,Math.max(0,t-18)*0.55);
+  if(st.sc==='anomaly') return t<46?0:Math.max(0,55-(t-46)*4);
+  return 0;
+}
+function step(){
+  const t=st.tick, g=geoAt(st.ch), mit=st.mit;
+  const P=TARGET-dropFn(t)+(mit?25:0)+nz(t,1)*3.5;
+  const spike=(st.sc==='anomaly'&&t>=46&&t<52)?5:0;
+  const rate=Math.max(2,12+spike-(mit?4:0)+nz(t,2)*0.8);
+  const pk=peck({P,rate,f:g.f});
+  const VL=pk.VL*(1+0.04*nz(t,3));
+  const S=Math.max(0,VL/100*AREA/(pk.i*2.5066)*1000+0.25*nz(t,5));
+  const grout=clamp(135-22*(VL-0.5)+3*nz(t,6),95,160);
+  const ppv=Math.max(0.2,1.0+0.1*rate+0.25*nz(t,8));
+  const pore=9.81*(Z0-(4+0.8*Math.sin(st.ch/60)))+2*nz(t,9);
+  const adv=rate*0.375; st.ch+=adv;
+  const prevC=st.hist.length?st.hist[st.hist.length-1].ch4:0, vent=st.vboost?100:(prevC>=10?80:60);
+  const pe=pocketEffect(st.ch,st.pk), gs=gasFace(pe[0],pe[1],vent,pk.dev,rate,t);
+  const e={t,ch:st.ch,P,rate,VL,S,Spred:pk.S,grout,ppv,pore,f:g.f,g:g.g,K:g.K,i:pk.i,dev:pk.dev,exc:pk.exc,raw:pk.raw,vent,ch4:gs.ch4,h2s:gs.h2s,co:gs.co,co2:gs.co2,o2:gs.o2};
+  st.hist.push(e); if(st.hist.length>200) st.hist.shift();
+  st.tick++;
+  const lv=holdLevel(st.lastLv,lvl(S),S,TH,false);
+  if(lv>st.lastLv) pushAlert(lv,'Settlement',`Settlement ${S.toFixed(1)} mm at ${chFmt(e.ch)} passed the ${NAMES[lv].toLowerCase()} level (${TH[lv-1]} mm).`,ACT[lv],t);
+  else if(lv<st.lastLv) pushAlert(0,'Cleared',`Settlement ${S.toFixed(1)} mm is back below the ${NAMES[st.lastLv].toLowerCase()} level.`,'Keep the current settings and continue monitoring.',t);
+  st.lastLv=lv;
+  const out=Math.abs(P-TARGET)>BAND;
+  if(out&&!st.pOut) pushAlert(2,'Face pressure',`Face pressure ${Math.round(P)} kPa is outside the ${TARGET-BAND} to ${TARGET+BAND} kPa band.`,'Adjust screw conveyor speed and check muck volume against the theoretical advance.',t);
+  st.pOut=out;
+  Object.keys(GAS).forEach(g=>{
+    const G=GAS[g], v=e[G.key], old=st.gasLv[g], gl=holdLevel(old,glvl(g,v),v,G.th,G.lo);
+    if(gl>old) pushAlert(gl,'Gas, '+G.name,`${G.name} ${v.toFixed(G.dp)} ${G.unit} in the cutterhead chamber passed the ${NAMES[gl].toLowerCase()} level.`,GACT[gl],t);
+    else if(gl<old) pushAlert(0,'Cleared',`${G.name} ${v.toFixed(G.dp)} ${G.unit} is back below the ${NAMES[old].toLowerCase()} level.`,'Hold ventilation settings until two clear readings in a row.',t);
+    st.gasLv[g]=gl;
+  });
+}
+function fresh(sc){
+  aid=0;
+  st={tick:0,ch:2400,hist:[],mit:0,vboost:0,alerts:[],lastLv:0,pOut:false,sc,gasLv:{CH4:0,H2S:0,CO:0,CO2:0,O2:0},pk:pocketsFor(sc)};
+  for(let i=0;i<40;i++) step();
+  st.alerts.push({id:'a'+(aid++),lv:1,kind:'Data quality',msg:'Inclinometer INC-07 has been offline since 03:10.',act:'Swap the data logger at the next shift change.',time:simTime(30),ack:true});
+  st.alerts.push({id:'a'+(aid++),lv:0,kind:'Cleared',msg:'Daily sensor check done: 143 of 148 settlement points online.',act:'No action needed.',time:simTime(24),ack:true});
+}
+
+/* ---------- derived values ---------- */
+function makeProfile(){
+  const h=st.hist, L=h[h.length-1], head=L.ch;
+  return c=>{
+    if(c>head) return 0.5*L.S*Math.exp(-(c-head)/14);
+    let v=h[0].S;
+    for(let k=0;k<h.length;k++){
+      if(h[k].ch>=c){ if(k>0){const a=h[k-1],b=h[k];v=a.S+(b.S-a.S)*(c-a.ch)/(b.ch-a.ch)} break; }
+      v=h[k].S;
+    }
+    return v*(1-0.5*Math.exp(-(head-c)/25));
+  };
+}
+function linfit(ys){
+  const n=ys.length;let sx=0,sy=0,sxy=0,sxx=0;
+  ys.forEach((y,i)=>{sx+=i;sy+=y;sxy+=i*y;sxx+=i*i});
+  const b=(n*sxy-sx*sy)/(n*sxx-sx*sx), a=(sy-b*sx)/n;
+  const sd=Math.sqrt(ys.reduce((s,y,i)=>s+Math.pow(y-a-b*i,2),0)/Math.max(1,n-2));
+  return {a,b,sd,n};
+}
+function forecast(h,key,th0,floor){key=key||'S';th0=th0||TH;floor=floor||0.35;
+  const ys=h.slice(-8).map(d=>d[key]), f=linfit(ys);
+  const last=f.a+f.b*(ys.length-1); let acc=0; const out=[];
+  for(let k=1;k<=12;k++){
+    acc+=Math.pow(.9,k);
+    const m=last+f.b*acc, sig=Math.max(floor,f.sd)*Math.sqrt(1+k*.6);
+    out.push({k,m,lo:m-1.64*sig,hi:m+1.64*sig});
+  }
+  const L=h[h.length-1][key];
+  const ttb=th0.map(th=>{
+    if(L>=th) return {th,state:'exceeded'};
+    const c=out.find(o=>o.m>=th), u=out.find(o=>o.hi>=th);
+    return {th,state:c?'forecast':u?'upper':'none',k:c&&c.k,ku:u&&u.k};
+  });
+  return {out,ttb,f};
+}
+function gasForecast(h){
+  const L=h[h.length-1], out=[];
+  for(let k=1;k<=12;k++){
+    const c=L.ch+L.rate*0.375*k, pe=pocketEffect(c,st.pk), v=gasFace(pe[0],pe[1],L.vent,L.dev,L.rate).ch4, sig=Math.max(1,v*0.12)*Math.sqrt(1+k*.3);
+    out.push({k,m:v,lo:Math.max(0,v-1.64*sig),hi:v+1.64*sig});
+  }
+  const cur=L.ch4;
+  const ttb=GAS.CH4.th.map(th=>{
+    if(cur>=th) return {th,state:'exceeded'};
+    const c=out.find(o=>o.m>=th), u=out.find(o=>o.hi>=th);
+    return {th,state:c?'forecast':u?'upper':'none',k:c&&c.k,ku:u&&u.k};
+  });
+  return {out,ttb};
+}
+function models(){
+  const h=st.hist, act=[], tr=[], pk=[], pr=[];
+  for(let j=8;j<h.length;j++){
+    const f=linfit(h.slice(j-8,j).map(d=>d.S));
+    tr.push(f.a+f.b*(7+0.9)); pk.push(h[j].Spred); pr.push(h[j-1].S); act.push(h[j].S);
+  }
+  const rm=(p,n)=>{const a=p.slice(-n),b=act.slice(-n);return Math.sqrt(a.reduce((s,v,i)=>s+Math.pow(v-b[i],2),0)/a.length)};
+  const mean=act.reduce((s,v)=>s+v,0)/act.length, sst=act.reduce((s,v)=>s+Math.pow(v-mean,2),0);
+  const r2=p=>1-p.reduce((s,v,i)=>s+Math.pow(v-act[i],2),0)/Math.max(sst,1e-6);
+  return [['Peck estimate from machine data',pk],['Trend model (linear, damped)',tr],['Persistence baseline',pr]].map(([name,p])=>{
+    const all=rm(p,p.length),r8=rm(p,8);
+    return {name,rmse:all,r2:r2(p),rmse8:r8,drift:r8>1.6*all&&r8>0.6};
+  });
+}
+function derive(){
+  const h=st.hist, L=h[h.length-1], prof=makeProfile(), head=L.ch;
+  const blds=buildingsIn(head-180,head+320).map(b=>{
+    const S=prof(b.ch)*Math.exp(-b.off*b.off/(2*L.i*L.i)), r=S/(12*b.tol);
+    return Object.assign({},b,{S,r,slope:S/1000*0.607/L.i,lv:r>=2?3:r>=1.5?2:r>=1?1:0});
+  });
+  const near=blds.filter(b=>Math.abs(b.ch-head)<=120);
+  const worst=near.slice().sort((a,b)=>b.r-a.r)[0]||null;
+  const lvS=lvl(L.S);
+  const glv={};Object.keys(GAS).forEach(g=>{glv[g]=glvl(g,L[GAS[g].key])});
+  const gmax=Math.max.apply(null,Object.keys(glv).map(g=>glv[g]));
+  return {h,L,prof,head,blds,near,worst,lvS,glv,gmax,lvAll:Math.max.apply(null,[lvS,gmax].concat(near.map(b=>b.lv))),geo:geoAt(head),fc:forecast(h),gfc:gasForecast(h),mod:models()};
+}
+function risks(d){
+  const L=d.L, f=L.f, wr=d.worst?d.worst.r:0.3;
+  return [
+   {id:'R1',h:'Excessive surface settlement',l:clamp(Math.round(L.S/4.5),1,5),c:4,o:'Geotechnical engineer',b:`Settlement ${L.S.toFixed(1)} mm`},
+   {id:'R2',h:'Face instability or blow-out',l:clamp(1+Math.round(L.dev/9),1,5),c:5,o:'TBM pilot',b:`Pressure ${Math.round(L.P)} kPa vs target ${TARGET}`},
+   {id:'R3',h:'Damage to masonry or heritage building',l:clamp(Math.ceil(wr*2.2),1,5),c:4,o:'Structural monitoring lead',b:d.worst?`${d.worst.n}, ${d.worst.S.toFixed(1)} mm`:'No building in range'},
+   {id:'R4',h:'Water main or utility rupture',l:clamp(Math.round((L.S-2)/4.5),1,5),c:4,o:'Utility liaison',b:`Settlement ${L.S.toFixed(1)} mm`},
+   {id:'R5',h:'Groundwater inflow at mixed face',l:clamp(1+Math.round(3*f)+(L.dev>10?1:0),1,5),c:3,o:'Hydrogeologist',b:`${Math.round(f*100)}% of face in sand`},
+   {id:'R6',h:'Vibration complaints near hospital',l:clamp(Math.round(L.ppv/1.4),1,5),c:2,o:'EHS officer',b:`PPV ${L.ppv.toFixed(1)} mm/s`},
+   {id:'R7',h:'Methane accumulation and ignition',l:clamp(1+Math.floor(L.ch4/9),1,5),c:5,o:'Gas safety officer',b:`CH4 ${L.ch4.toFixed(1)} %LEL`},
+   {id:'R8',h:'Hydrogen sulfide exposure',l:clamp(1+Math.floor(L.h2s/3),1,5),c:5,o:'Gas safety officer',b:`H2S ${L.h2s.toFixed(1)} ppm`},
+   {id:'R9',h:'Oxygen deficiency in the heading',l:clamp(1+Math.floor((20.9-L.o2)/0.45),1,5),c:5,o:'Ventilation engineer',b:`O2 ${L.o2.toFixed(1)} %`}
+  ].map(r=>{r.s=r.l*r.c;r.lv=r.s<=4?0:r.s<=9?1:r.s<=14?2:3;return r});
+}
+
+/* ---------- chart helper ---------- */
+function chart(o){
+  const W=o.w||640,H=o.h||250,m={l:50,r:o.rpad||64,t:12,b:o.xTitle?44:30};
+  const iw=W-m.l-m.r, ih=H-m.t-m.b;
+  const sx=v=>m.l+(v-o.xMin)/(o.xMax-o.xMin)*iw, sy=v=>m.t+(1-(v-o.yMin)/(o.yMax-o.yMin))*ih;
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.label}">`;
+  for(let v=Math.ceil(o.yMin/o.yStep)*o.yStep;v<=o.yMax+1e-9;v+=o.yStep){
+    const y=sy(v);
+    s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y}" y2="${y}" style="stroke:var(--line)"/><text x="${m.l-8}" y="${y+4}" text-anchor="end" class="ax">${sgn(v)}</text>`;
+  }
+  (o.xTicks||[]).forEach(t=>{const x=sx(t.v);s+=`<line x1="${x}" x2="${x}" y1="${m.t+ih}" y2="${m.t+ih+4}" style="stroke:var(--mute)"/><text x="${x}" y="${m.t+ih+17}" text-anchor="middle" class="ax">${t.label}</text>`});
+  s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${m.t+ih}" y2="${m.t+ih}" style="stroke:var(--mute)"/>`;
+  if(o.xTitle) s+=`<text x="${m.l+iw/2}" y="${H-6}" text-anchor="middle" class="ax">${o.xTitle}</text>`;
+  (o.bands||[]).forEach(b=>{
+    const up=b.xs.map((x,i)=>sx(x).toFixed(1)+','+sy(clamp(b.hi[i],o.yMin,o.yMax)).toFixed(1));
+    const dn=b.xs.map((x,i)=>sx(x).toFixed(1)+','+sy(clamp(b.lo[i],o.yMin,o.yMax)).toFixed(1)).reverse();
+    s+=`<polygon points="${up.concat(dn).join(' ')}" style="fill:${b.color}"/>`;
+  });
+  (o.hlines||[]).forEach(h=>{const y=sy(h.y);s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y}" y2="${y}" style="stroke:${h.color}" stroke-dasharray="5 4"/><text x="${W-m.r+5}" y="${y+4}" class="ax" style="fill:${h.color}">${h.label}</text>`});
+  (o.vlines||[]).forEach(v=>{const x=sx(v.x);s+=`<line x1="${x}" x2="${x}" y1="${m.t}" y2="${m.t+ih}" style="stroke:var(--mute)" stroke-dasharray="2 3"/><text x="${x+4}" y="${m.t+11}" class="ax">${v.label}</text>`});
+  (o.series||[]).forEach(se=>{
+    const xs=se.xs||o.xs, pt=(x,i)=>sx(x).toFixed(1)+','+sy(clamp(se.ys[i],o.yMin,o.yMax)).toFixed(1);
+    if(se.line!==false) s+=`<polyline points="${xs.map(pt).join(' ')}" fill="none" style="stroke:${se.color}" stroke-width="${se.w||2}" stroke-linejoin="round" ${se.dash?`stroke-dasharray="${se.dash}"`:''}/>`;
+    if(se.dots) xs.forEach((x,i)=>{s+=`<circle cx="${sx(x).toFixed(1)}" cy="${sy(clamp(se.ys[i],o.yMin,o.yMax)).toFixed(1)}" r="3.3" style="fill:${se.color}"/>`});
+  });
+  return s+'</svg>';
+}
+const histTicks=(lo,hi)=>{const a=[];for(let v=Math.ceil(lo/4)*4;v<=hi;v+=4)a.push({v,label:v===0?'now':(v<0?'\u2212':'+')+Math.abs(v/4)+' d'});return a};
+const range=(a,b,s)=>{const r=[];for(let v=a;v<=b+1e-9;v+=s)r.push(v);return r};
+const thLines=(neg)=>TH.map((t,i)=>({y:neg?-t:t,color:`var(--lv${i+1})`,label:NAMES[i+1]+' '+t}));
+
+/* ---------- section view (hero) ---------- */
+function sectionSVG(d){
+  const L=d.L, head=d.head, a=head-180, b=head+320, W=960,H=344,ml=40,mr=22,iw=W-ml-mr;
+  const px=c=>ml+(c-a)/500*iw, y0=146, dz=3.4, sY=v=>14+Math.min(v,30)/30*84, prof=d.prof;
+  let s=`<svg class="sec" viewBox="0 0 ${W} ${H}" role="img" aria-label="Longitudinal section showing ground layers, the tunnel boring machine, buildings and the surface settlement profile">`;
+  const xs=range(a-6,b+6,4);
+  for(let i=0;i<5;i++){
+    const top=xs.map(c=>px(c).toFixed(1)+','+(y0+bnd(c)[i]*dz).toFixed(1));
+    const bot=xs.slice().reverse().map(c=>px(c).toFixed(1)+','+(y0+bnd(c)[i+1]*dz).toFixed(1));
+    s+=`<polygon points="${top.concat(bot).join(' ')}" style="fill:var(${LAY[i][1]})"><title>${LAY[i][0]}</title></polygon>`;
+  }
+  s+=`<polyline fill="none" style="stroke:var(--water)" stroke-width="1.6" stroke-dasharray="6 4" points="${xs.map(c=>px(c).toFixed(1)+','+(y0+(4+0.8*Math.sin(c/60))*dz).toFixed(1)).join(' ')}"><title>Water table</title></polyline>`;
+  for(let c=Math.ceil(a/100)*100;c<=b;c+=100) s+=`<line x1="${px(c)}" x2="${px(c)}" y1="${y0}" y2="${y0+40*dz}" style="stroke:var(--ink)" stroke-opacity=".45" stroke-width="1.5"><title>Borehole BH-${c/100}</title></line>`;
+  s+=`<line x1="${ml}" x2="${W-mr}" y1="${y0}" y2="${y0}" style="stroke:var(--ink)" stroke-width="1.5"/>`;
+  st.pk.forEach(p=>{
+    if(p.ch<a||p.ch>b) return;
+    const pe=pocketEffect(p.ch,[p]), pv=gasFace(pe[0],0,60,0,12).ch4;
+    s+=`<ellipse cx="${px(p.ch)}" cy="${y0+p.depth*dz}" rx="${p.w*.8/500*iw}" ry="${3*dz}" style="fill:#FF6E00;stroke:#FF6E00" fill-opacity=".5" stroke-dasharray="3 3"><title>Gas pocket ${chFmt(p.ch)}, depth ${p.depth} m, about ${pv.toFixed(0)} %LEL methane at the face if unventilated</title></ellipse>`;
+  });
+  // tunnel
+  const yc=y0+Z0*dz, r=D/2*dz;
+  s+=`<rect x="${px(a)}" y="${yc-r}" width="${px(head)-px(a)}" height="${2*r}" style="fill:var(--panel2);stroke:var(--tunnel)" stroke-width="3"/>`;
+  s+=`<rect x="${px(head)}" y="${yc-r}" width="${px(b)-px(head)}" height="${2*r}" fill="none" style="stroke:var(--tunnel)" stroke-width="2" stroke-dasharray="7 5" stroke-opacity=".8"/>`;
+  s+=`<rect x="${px(head-11)}" y="${yc-r}" width="${px(head)-px(head-11)}" height="${2*r}" style="fill:var(--accent)"><title>TBM shield</title></rect><rect x="${px(head)}" y="${yc-r-3}" width="5" height="${2*r+6}" rx="1.5" style="fill:var(--accent);stroke:var(--ink)"><title>Cutterhead</title></rect>`;
+  s+=`<text x="${px(head)}" y="${yc+r+17}" text-anchor="middle" class="ax" style="fill:var(--ink);font-weight:700">TBM ${chFmt(head)}</text>`;
+  // buildings
+  d.blds.forEach(bd=>{
+    const lc=`var(--lv${bd.lv})`, tip=`${bd.n}, ${chFmt(bd.ch)}, ${bd.S.toFixed(1)} mm predicted, ${NAMES[bd.lv]}`;
+    if(bd.pipe) s+=`<line x1="${px(bd.ch-bd.w/2)}" x2="${px(bd.ch+bd.w/2)}" y1="${y0+1.6*dz}" y2="${y0+1.6*dz}" style="stroke:${lc}" stroke-width="4" stroke-dasharray="8 3"><title>${tip}</title></line>`;
+    else s+=`<rect x="${px(bd.ch-bd.w/2)}" y="${y0-bd.h}" width="${bd.w/500*iw}" height="${bd.h}" rx="1.5" style="fill:var(--panel);stroke:${lc}" stroke-width="2.6"><title>${tip}</title></rect>`;
+  });
+  // settlement strip
+  s+=`<line x1="${ml}" x2="${W-mr}" y1="${sY(0)}" y2="${sY(0)}" style="stroke:var(--mute)"/>`;
+  [0,10,20,30].forEach(v=>{s+=`<text x="${ml-6}" y="${sY(v)+4}" text-anchor="end" class="ax">${v}</text>`});
+  const pts=range(a,b,3).map(c=>[px(c).toFixed(1),sY(prof(c)).toFixed(1)]);
+  s+=`<path d="M${px(a)},${sY(0)} L${pts.map(p=>p.join(',')).join(' L')} L${px(b)},${sY(0)}Z" style="fill:var(--accent-soft)"/>`;
+  s+=`<polyline fill="none" style="stroke:var(--accent)" stroke-width="2" points="${pts.map(p=>p.join(',')).join(' ')}"/>`;
+  TH.forEach((t,i)=>{s+=`<line x1="${ml}" x2="${W-mr}" y1="${sY(t)}" y2="${sY(t)}" style="stroke:var(--lv${i+1})" stroke-dasharray="4 4"/><text x="${W-mr-4}" y="${sY(t)-3}" text-anchor="end" class="ax" style="fill:var(--lv${i+1})">${NAMES[i+1]} ${t} mm</text>`});
+  for(let c=Math.ceil(a/15)*15;c<=b;c+=15){const v=prof(c);s+=`<circle cx="${px(c).toFixed(1)}" cy="${sY(v).toFixed(1)}" r="2.8" style="fill:var(--lv${lvl(v)});stroke:var(--panel)" stroke-width="1"/>`}
+  s+=`<text x="${ml+4}" y="11" class="ax">Surface settlement, mm (downward)</text>`;
+  // axis
+  for(let c=Math.ceil(a/50)*50;c<=b;c+=50) s+=`<line x1="${px(c)}" x2="${px(c)}" y1="${y0+46*dz}" y2="${y0+46*dz+4}" style="stroke:var(--mute)"/><text x="${px(c)}" y="${y0+46*dz+17}" text-anchor="middle" class="ax">${chFmt(c)}</text>`;
+  return s+'</svg>';
+}
+
+/* ---------- renderers ---------- */
+function alertsHTML(n,pred){
+  const A=(pred?st.alerts.filter(pred):st.alerts).slice(0,n);
+  if(!A.length) return '<p class="hint">No alerts yet.</p>';
+  return A.map(a=>`<div class="alert l${a.lv}${a.ack?' acked':''}"><div><div><strong>${a.kind}</strong> <span class="mute">${a.time}</span></div><div>${a.msg}</div><div class="act">Recommended: ${a.act}</div></div><div><button class="btn sm" data-ack="${a.id}" ${a.ack?'disabled':''}>${a.ack?'Acknowledged':'Acknowledge'}</button></div></div>`).join('');
+}
+function ventBtn(d){
+  const show=st.vboost||d.gmax>=1;
+  return show?`<div style="margin-top:6px"><button class="btn ${st.vboost?'':'primary'}" data-action="vent" type="button">${st.vboost?'Return ventilation to auto':'Boost ventilation to 100 m\u00b3/s'}</button><div class="hint" style="margin:4px 0 0;max-width:260px">Forces the main fan to full flow to dilute gas in the heading.</div></div>`:'';
+}
+function mitHTML(d){return mitSettle(d)+ventBtn(d);}
+function mitSettle(d){
+  const show=st.mit||d.lvS>=1||d.lvAll>d.gmax;
+  return show?`<button class="btn ${st.mit?'':'primary'}" data-action="mit" type="button">${st.mit?'Release response':'Apply recommended response'}</button><div class="hint" style="margin:4px 0 0;max-width:260px">${st.mit?'Pressure raised 25 kPa and drive slowed by 4 rings/day.':'Raises face pressure 25 kPa and slows the drive by 4 rings/day.'}</div>`:'';
+}
+function bldTable(list,full){
+  if(!list.length) return '<p class="hint">No structures in range.</p>';
+  return `<table class="tbl"><thead><tr><th>Structure</th><th>Chainage</th>${full?'<th>Offset</th>':''}<th>Settlement</th>${full?'<th>Tilt</th>':''}<th>Status</th></tr></thead><tbody>${list.map(b=>`<tr><td>${b.n}</td><td>${chFmt(b.ch)}</td>${full?`<td>${b.off} m</td>`:''}<td>${b.S.toFixed(1)} mm</td>${full?`<td>1:${Math.min(99999,Math.round(1/Math.max(b.slope,1e-5)))}</td>`:''}<td><span class="chip c${b.lv}">${NAMES[b.lv]}</span></td></tr>`).join('')}</tbody></table>`;
+}
+function renderTop(d){
+  const L=d.L, items=[];
+  const w=d.worst, nSens=L.S>=TH[1]?Math.round(2+(L.S-TH[1])*2.4):0;
+  const mrow=d.mod[1], pdev=L.P-TARGET;
+  items.push({k:'Max surface settlement',v:L.S.toFixed(1),u:'mm',lv:d.lvS,n:`Alert ${TH[0]}, alarm ${TH[1]}, action ${TH[2]}`});
+  items.push({k:'Volume loss',v:L.VL.toFixed(2),u:'%',lv:lvl(L.VL,[0.8,1.2,1.6]),n:'Design allowance 1.0%'});
+  items.push({k:'Face pressure',v:Math.round(L.P),u:'kPa',lv:Math.abs(pdev)>BAND?2:Math.abs(pdev)>BAND*0.6?1:0,n:`Target ${TARGET}, ${pdev>=0?'+':'\u2212'}${Math.abs(Math.round(pdev))} off`});
+  items.push({k:'Worst building tilt',v:w?'1:'+Math.min(99999,Math.round(1/Math.max(w.slope,1e-5))):'None',u:'',lv:w?w.lv:0,n:w?w.n:'No structure within 120 m'});
+  items.push({k:'Sensors in alarm',v:nSens,u:'/ 148',lv:nSens>0?2:0,n:'5 offline, see Monitoring'});
+  items.push({k:'Model error',v:'\u00b1'+mrow.rmse8.toFixed(2),u:'mm',lv:mrow.rmse8<0.8?0:mrow.rmse8<1.5?1:2,n:mrow.drift?'Trend model drifting':'Trend model, last 2 days'});
+  items.push({k:'Advance rate',v:L.rate.toFixed(0),u:'rings/day',lv:0,n:`${chFmt(L.ch)} of ${chFmt(ROUTE_END)}, ${Math.round(L.ch/ROUTE_END*100)}% done`});
+  items.push({k:'Methane at the face',v:L.ch4.toFixed(1),u:'%LEL',lv:d.gmax,n:`O2 ${L.o2.toFixed(1)}%, H2S ${L.h2s.toFixed(1)} ppm`});
+  $('#kpis').innerHTML=items.map(i=>`<div class="kpi"><div class="k">${i.k}</div><div class="v">${i.v}<span class="u">${i.u}</span></div><div class="n"><span class="dot" style="background:var(--lv${i.lv})"></span><span>${i.n}</span></div></div>`).join('');
+  $('#statusPill').innerHTML=`<span class="pill l${d.lvAll}">${NAMES[d.lvAll]}</span>`;
+  $('#simTime').textContent='Simulated time '+simTime(st.tick-1);
+  // early warning
+  const idx=d.fc.ttb.findIndex(t=>t.state!=='exceeded'); let msg,lv=d.lvAll;
+  if(idx<0) msg='<strong>Action level exceeded.</strong> Excavation should be on hold until the response is signed off.';
+  else{
+    const t=d.fc.ttb[idx], nm=NAMES[idx+1];
+    if(t.state==='forecast') msg=`<strong>Early warning.</strong> Settlement is forecast to reach the ${nm.toLowerCase()} level (${t.th} mm) in about ${t.k*TICK_H} hours.`;
+    else if(t.state==='upper') msg=`<strong>Watch.</strong> The central forecast stays under the ${nm.toLowerCase()} level (${t.th} mm), but the upper bound could reach it in about ${t.ku*TICK_H} hours.`;
+    else msg=`<strong>No breach forecast.</strong> Settlement is not expected to reach the ${nm.toLowerCase()} level (${t.th} mm) in the next 72 hours.`;
+  }
+  const msgs=[msg], gi=d.gfc.ttb.findIndex(t=>t.state!=='exceeded');
+  if(gi<0) msgs.push('<strong>Methane action level exceeded.</strong> Evacuate and isolate non-Ex-rated power.');
+  else{
+    const t=d.gfc.ttb[gi], nm=NAMES[gi+1].toLowerCase();
+    if(t.state==='forecast') msgs.push(`<strong>Gas early warning.</strong> Methane is forecast to reach the ${nm} level (${t.th} %LEL) in about ${t.k*TICK_H} hours.`);
+    else if(t.state==='upper') msgs.push(`<strong>Gas watch.</strong> The central methane forecast stays under the ${nm} level (${t.th} %LEL); the upper bound could reach it in about ${t.ku*TICK_H} hours.`);
+  }
+  const pa=nextPockets(d.head,1,120);
+  if(pa.length) msgs.push(`<strong>Gas pocket ahead</strong> at ${chFmt(pa[0].ch)}, ${Math.round(pa[0].ch-d.head)} m from the face. Check ventilation and probe drill before reaching it.`);
+  const ew=$('#ew'); ew.style.borderLeftColor=`var(--lv${lv})`; ew.innerHTML=msgs.map(m=>`<span>${m}</span>`).join('');
+}
+function renderOverview(d){
+  $('#heroHint').textContent=`TBM head at ${chFmt(d.head)}. Ground at the face: ${d.geo.label}. ${d.blds.length} structures in the window ahead and behind. Settlement develops behind the face: about half at the cutterhead and nearly all of it 75 m back, which is where the headline settlement figure applies.`;
+  $('#hero').innerHTML=sectionSVG(d);
+  $('#heroLegend').innerHTML=LAY.map(l=>`<span><i style="background:var(${l[1]})"></i>${l[0]}</span>`).join('')+`<span><i style="background:var(--water)"></i>Water table</span><span><i style="background:var(--accent)"></i>TBM and settlement profile</span><span><i style="background:var(--lv0)"></i><i style="background:var(--lv1);margin-left:-3px"></i><i style="background:var(--lv2);margin-left:-3px"></i><i style="background:var(--lv3);margin-left:-3px"></i>Sensor and structure status</span><span><i style="background:#FF6E00"></i>Gas pocket from survey</span>`;
+  $('#mitBox').innerHTML=mitHTML(d);
+  $('#ovAlerts').innerHTML=alertsHTML(4);
+  const ahead=d.blds.filter(b=>b.ch>d.head-30).sort((a,b)=>a.ch-b.ch).slice(0,5);
+  $('#ovBlds').innerHTML=bldTable(ahead,false);
+}
+function renderMonitor(d){
+  const L=d.L, H=d.h.slice(-24), xs=H.map((_,i)=>i-(H.length-1)), xt=histTicks(-23,0);
+  const offs=[-30,-20,-12,-6,0,6,12,20,30], cx=range(-40,40,2);
+  $('#mTrough').innerHTML=chart({label:'Settlement trough',xMin:-40,xMax:40,yMin:-30,yMax:2,yStep:10,xTicks:range(-40,40,20).map(v=>({v,label:v})),xTitle:'Distance from tunnel centreline (m)',
+    hlines:thLines(true),
+    series:[{xs:cx,ys:cx.map(x=>-L.S*Math.exp(-x*x/(2*L.i*L.i))),color:'var(--accent)',w:2.4},
+            {xs:offs,ys:offs.map(x=>-L.S*Math.exp(-x*x/(2*L.i*L.i))*(1+0.06*nz(st.tick,x+40))),color:'var(--ink)',line:false,dots:true}]});
+  $('#mPress').innerHTML=chart({label:'Face pressure',xMin:-23,xMax:0,yMin:120,yMax:230,yStep:20,xTicks:xt,rpad:20,
+    bands:[{xs,lo:xs.map(()=>TARGET-BAND),hi:xs.map(()=>TARGET+BAND),color:'var(--accent-soft)'}],
+    series:[{xs,ys:H.map(e=>e.P),color:'var(--accent)',w:2.4},{xs,ys:H.map(e=>e.pore),color:'var(--water)',dash:'6 4'}],
+    vlines:[]});
+  $('#mVib').innerHTML=chart({label:'Peak particle velocity',xMin:-23,xMax:0,yMin:0,yMax:6,yStep:1,xTicks:xt,rpad:70,
+    hlines:[{y:3,color:'var(--lv1)',label:'Alert 3'},{y:5,color:'var(--lv3)',label:'Limit 5'}],
+    series:[{xs,ys:H.map(e=>e.ppv),color:'var(--accent)',w:2.4}]});
+  $('#mGrout').innerHTML=chart({label:'Grout fill',xMin:-23,xMax:0,yMin:90,yMax:160,yStep:10,xTicks:xt,rpad:70,
+    hlines:[{y:120,color:'var(--lv2)',label:'Min 120%'}],
+    series:[{xs,ys:H.map(e=>e.grout),color:'var(--accent)',w:2.4}]});
+  $('#mBlds').innerHTML=bldTable(d.blds.slice().sort((a,b)=>Math.abs(a.ch-d.head)-Math.abs(b.ch-d.head)).slice(0,6),true);
+  $('#mSensors').innerHTML=`<table class="tbl"><tbody>
+    <tr><td>Settlement points online</td><td><strong>143 of 148</strong></td></tr>
+    <tr><td>Offline sensors</td><td>INC-07, SP-112, SP-113, TLT-04, PZ-09</td></tr>
+    <tr><td>Readings rejected as outliers today</td><td>7</td></tr>
+    <tr><td>Latest data received</td><td>${simTime(st.tick-1)}</td></tr>
+    <tr><td>Next survey of prisms</td><td>${simTime(st.tick+1)}</td></tr><tr><td>Gas heads last calibrated</td><td>Today, 05:30</td></tr></tbody></table>`;
+}
+function renderPredict(d){
+  const H=d.h.slice(-24), n=H.length, xs=H.map((_,i)=>i-(n-1)), fx=d.fc.out.map(o=>o.k);
+  const ymax=Math.max(24,Math.ceil(Math.max.apply(null,d.fc.out.map(o=>o.hi))/5)*5+2);
+  $('#pFore').innerHTML=chart({label:'Settlement forecast',w:760,h:300,xMin:-23,xMax:12,yMin:0,yMax:ymax,yStep:5,xTicks:histTicks(-23,12),rpad:76,
+    hlines:thLines(false),vlines:[{x:0,label:'now'}],
+    bands:[{xs:[0].concat(fx),lo:[H[n-1].S].concat(d.fc.out.map(o=>o.lo)),hi:[H[n-1].S].concat(d.fc.out.map(o=>o.hi)),color:'var(--accent-soft)'}],
+    series:[{xs,ys:H.map(e=>e.Spred),color:'var(--mute)',dash:'5 4',w:1.6},
+            {xs,ys:H.map(e=>e.S),color:'var(--ink)',w:2.2},
+            {xs:[0].concat(fx),ys:[H[n-1].S].concat(d.fc.out.map(o=>o.m)),color:'var(--accent)',w:2.6,dash:'2 3'}]})
+    +`<div class="legend"><span><i style="background:var(--ink)"></i>Measured</span><span><i style="background:var(--mute)"></i>Peck estimate from machine data</span><span><i style="background:var(--accent)"></i>Forecast and 90% band</span></div>`;
+  $('#pTTB').innerHTML=`<table class="tbl"><tbody>`+d.fc.ttb.map((t,i)=>{
+    const txt=t.state==='exceeded'?'<span class="chip c3">Exceeded</span>':t.state==='forecast'?`in about <strong>${t.k*TICK_H} h</strong>`:t.state==='upper'?`not centrally; upper bound in about ${t.ku*TICK_H} h`:'not within 72 h';
+    return `<tr><td><span class="dot" style="display:inline-block;background:var(--lv${i+1})"></span> ${NAMES[i+1]}, ${t.th} mm</td><td>${txt}</td></tr>`}).join('')+`</tbody></table>`;
+  const L=d.L, p=L.raw>0?L.raw:1, parts=[['Baseline ground loss',0.30,'var(--accent)'],['Face pressure shortfall',0.03*L.dev,'var(--lv2)'],['Advance rate above 14 rings/day',0.025*L.exc,'var(--lv1)'],['Face geology (sand or mixed)',L.raw*(L.g-1),'var(--s2)']];
+  const tot=parts.reduce((s,x)=>s+x[1],0);
+  $('#pDrivers').innerHTML=`<div class="stack">${parts.map(x=>`<span style="width:${x[1]/tot*100}%;background:${x[2]}" title="${x[0]}"></span>`).join('')}</div>`+parts.map(x=>`<div class="sw"><i style="background:${x[2]}"></i>${x[0]}<b>${x[1].toFixed(2)}%</b></div>`).join('')+`<div class="sw" style="border-top:1px solid var(--line);padding-top:4px">Estimated volume loss<b>${tot.toFixed(2)}%</b></div>`;
+  $('#pModels').innerHTML=`<table class="tbl"><thead><tr><th>Model</th><th>RMSE</th><th>R\u00b2</th><th>Last 2 days</th><th>Drift</th></tr></thead><tbody>`+d.mod.map(m=>`<tr><td>${m.name}</td><td>${m.rmse.toFixed(2)} mm</td><td>${m.r2.toFixed(2)}</td><td>${m.rmse8.toFixed(2)} mm</td><td>${m.drift?'<span class="chip c2">Drift</span>':'<span class="chip c0">OK</span>'}</td></tr>`).join('')+`</tbody></table><p class="hint" style="margin-top:8px">Drift is flagged when the last two days of error exceed 1.6 times the long-run error.</p>`;
+  updateWI(d);
+}
+function updateWI(d){
+  d=d||derive();
+  const P=+$('#wiP').value,R=+$('#wiR').value,Z=+$('#wiZ').value,V=+$('#wiV').value,soil=$('#wiSoil').value;
+  const f={sand:1,mixed:.5,clay:0}[soil], tgt=9.81*(Z-4)+23;
+  const pk=peck({P,rate:R,f,z:Z,target:tgt}), lv=lvl(pk.S);
+  $('#wiPv').textContent=`${P} kPa, suggested ${Math.round(tgt)} for this depth`;
+  $('#wiRv').textContent=`${R} rings/day`; $('#wiZv').textContent=`${Z} m`; $('#wiVv').textContent=`${V} m\u00b3/s`;
+  const nearest=pk.S*Math.exp(-100/(2*pk.i*pk.i));
+  const nx=nextPockets(d.head,1,600)[0]; let gtxt='No gas pockets are mapped in the next 600 m.';
+  if(nx){const pe=pocketEffect(nx.ch,st.pk), g=gasFace(pe[0],pe[1],V,pk.dev,R), gl=Math.max(glvl('CH4',g.ch4),glvl('H2S',g.h2s),glvl('O2',g.o2));
+    gtxt=`At the next gas pocket (${chFmt(nx.ch)}) these settings give about <strong>${g.ch4.toFixed(1)} %LEL</strong> methane, ${g.h2s.toFixed(1)} ppm H2S and ${g.o2.toFixed(1)}% O2: <span class="chip c${gl}">${NAMES[gl]}</span>.`;}
+  $('#wiGas').innerHTML=`<p class="hint" style="margin-top:6px">${gtxt}</p>`;
+  const cx=range(-40,40,2), L=d.L;
+  $('#wiOut').innerHTML=`<div class="out"><div><div class="mute">Volume loss</div><div class="v">${pk.VL.toFixed(2)}%</div></div><div><div class="mute">Max settlement</div><div class="v">${pk.S.toFixed(1)} mm</div></div><div><div class="mute">Status</div><div class="v"><span class="chip c${lv}" style="font-size:15px">${NAMES[lv]}</span></div></div></div>`
+   +chart({label:'What-if settlement trough',w:560,h:210,xMin:-40,xMax:40,yMin:-30,yMax:2,yStep:10,xTicks:range(-40,40,20).map(v=>({v,label:v})),hlines:thLines(true),
+     series:[{xs:cx,ys:cx.map(x=>-L.S*Math.exp(-x*x/(2*L.i*L.i))),color:'var(--mute)',dash:'5 4',w:1.6},{xs:cx,ys:cx.map(x=>-pk.S*Math.exp(-x*x/(2*pk.i*pk.i))),color:'var(--accent)',w:2.6}]})
+   +`<div class="legend"><span><i style="background:var(--mute)"></i>Current drive</span><span><i style="background:var(--accent)"></i>What-if</span></div><p class="hint" style="margin-top:8px">A building 10 m off the centreline would see about <strong>${nearest.toFixed(1)} mm</strong>.</p>`;
+}
+
+function renderGas(d){
+  const L=d.L, gk=Object.keys(GAS), H=d.h.slice(-24), n=H.length, xs=H.map((_,i)=>i-(n-1)), xt=histTicks(-23,0);
+  $('#gasMit').innerHTML=ventBtn(d);
+  $('#gasCards').innerHTML=gk.map(g=>{const G=GAS[g];return `<div class="kpi"><div class="k">${G.name} (${g})</div><div class="v">${L[G.key].toFixed(G.dp)}<span class="u">${G.unit}</span></div><div class="n"><span class="dot" style="background:var(--lv${d.glv[g]})"></span><span>${G.th.join(' / ')}${G.lo?' (falling)':''}</span></div></div>`}).join('')
+   +`<div class="kpi"><div class="k">Ventilation airflow</div><div class="v">${L.vent.toFixed(0)}<span class="u">m\u00b3/s</span></div><div class="n"><span class="dot" style="background:var(--lv${L.vent>60?1:0})"></span><span>${st.vboost?'Manual boost on':'Ramps up when methane passes alert'}</span></div></div>`;
+  $('#gLoc').innerHTML=`<table class="tbl"><thead><tr><th>Location</th>${gk.map(g=>`<th>${g} (${GAS[g].unit})</th>`).join('')}</tr></thead><tbody>${LOCS.map(r=>`<tr><td><strong>${r[0]}</strong></td>${gk.map(g=>{const v=gasAt(L,r[1],g);return `<td class="gc${glvl(g,v)}">${v.toFixed(GAS[g].dp)}</td>`}).join('')}</tr>`).join('')}</tbody></table>`;
+  const ps=nextPockets(d.head,5,600);
+  $('#gAhead').innerHTML=ps.length?`<table class="tbl"><thead><tr><th>Chainage</th><th>Distance</th><th>Reached in</th><th>Depth</th><th>Peak CH4</th><th>Peak H2S</th><th>Lowest O2</th><th>Level</th></tr></thead><tbody>${ps.map(p=>{
+    const pe=pocketEffect(p.ch,st.pk), g=gasFace(pe[0],pe[1],L.vent,L.dev,L.rate), dist=p.ch-d.head, gl=Math.max(glvl('CH4',g.ch4),glvl('H2S',g.h2s),glvl('O2',g.o2));
+    return `<tr><td>${chFmt(p.ch)}</td><td>${Math.round(dist)} m</td><td>${Math.round(dist/(Math.max(L.rate,1)*1.5/24))} h</td><td>${p.depth} m</td><td>${g.ch4.toFixed(1)} %LEL</td><td>${g.h2s.toFixed(1)} ppm</td><td>${g.o2.toFixed(1)}%</td><td><span class="chip c${gl}">${NAMES[gl]}</span></td></tr>`}).join('')}</tbody></table>`:'<p class="hint">No pockets mapped in the next 600 m.</p>';
+  const hl=g=>GAS[g].th.map((t,i)=>({y:t,color:`var(--lv${i+1})`,label:NAMES[i+1]+' '+t}));
+  const one=(id,key,g,yMin,yMax,yStep,color,hlines)=>{$(id).innerHTML=chart({label:GAS[g]?GAS[g].name:'Airflow',xMin:-23,xMax:0,yMin,yMax,yStep,xTicks:xt,rpad:84,hlines:hlines||[],series:[{xs,ys:H.map(e=>e[key]),color:color||'var(--accent)',w:2.4}]})};
+  const fx=d.gfc.out.map(o=>o.k), top=Math.max(45,Math.ceil(Math.max.apply(null,d.gfc.out.map(o=>o.hi))/10)*10);
+  $('#gCH4').innerHTML=chart({label:'Methane forecast',xMin:-23,xMax:12,yMin:0,yMax:top,yStep:10,xTicks:histTicks(-23,12),rpad:84,hlines:hl('CH4'),vlines:[{x:0,label:'now'}],
+    bands:[{xs:[0].concat(fx),lo:[H[n-1].ch4].concat(d.gfc.out.map(o=>o.lo)),hi:[H[n-1].ch4].concat(d.gfc.out.map(o=>o.hi)),color:'var(--accent-soft)'}],
+    series:[{xs,ys:H.map(e=>e.ch4),color:'var(--ink)',w:2.2},{xs:[0].concat(fx),ys:[H[n-1].ch4].concat(d.gfc.out.map(o=>o.m)),color:'var(--accent)',w:2.6,dash:'2 3'}]});
+  one('#gH2S','h2s','H2S',0,20,5,'var(--accent)',hl('H2S'));
+  one('#gO2','o2','O2',17.5,21.5,1,'var(--accent)',hl('O2'));
+  one('#gCO2','co2','CO2',0,2,0.5,'var(--accent)',hl('CO2'));
+  one('#gCO','co','CO',0,60,10,'var(--accent)',[{y:25,color:'var(--lv1)',label:'Alert 25'},{y:50,color:'var(--lv2)',label:'Alarm 50'}]);
+  one('#gVent','vent',null,40,120,20,'var(--water)',[]);
+  const rules=[
+    ['Methane at or above alert (10 %LEL)',L.ch4>=10,'Increase reading frequency and confirm duct integrity.'],
+    ['Methane at or above alarm (20 %LEL)',L.ch4>=20,'Cut power to non-Ex-rated equipment, stop hot work, boost ventilation.'],
+    ['Methane at or above action (25 %LEL)',L.ch4>=25,'Evacuate the tunnel and keep it isolated until a clear gas test.'],
+    ['H2S at or above alarm (10 ppm)',L.h2s>=10,'Put on breathing apparatus, limit entry, and notify the rescue team.'],
+    ['Oxygen at or below 19.5%',L.o2<=19.5,'Stop entry without breathing apparatus and increase fresh air.'],
+    ['Low face pressure and methane at alert',L.dev>10&&L.ch4>=10,'Restore face pressure; gas migrates into the chamber when support drops.']];
+  $('#gPlay').innerHTML=rules.map(r=>`<div class="rule"><span class="chip ${r[1]?'c2':'c0'}">${r[1]?'Triggered':'Idle'}</span><div><strong>${r[0]}</strong><div class="hint" style="margin:0">${r[2]}</div></div></div>`).join('');
+  $('#gTTB').innerHTML=`<table class="tbl"><tbody>`+d.gfc.ttb.map((t,i)=>{
+    const txt=t.state==='exceeded'?'<span class="chip c3">Exceeded</span>':t.state==='forecast'?`in about <strong>${t.k*TICK_H} h</strong>`:t.state==='upper'?`not centrally; upper bound in about ${t.ku*TICK_H} h`:'not within 72 h';
+    return `<tr><td><span class="dot" style="display:inline-block;background:var(--lv${i+1})"></span> ${NAMES[i+1]}, ${t.th} %LEL</td><td>${txt}</td></tr>`}).join('')+`</tbody></table>`;
+  $('#gAlerts').innerHTML=alertsHTML(4,a=>a.kind.indexOf('Gas')===0||(a.kind==='Cleared'&&/Methane|sulfide|Oxygen|monoxide|dioxide/.test(a.msg)));
+}
+function renderRisk(d){
+  const rs=risks(d), cs=58, ml=64, mt=10, W=ml+cs*5+10, H=mt+cs*5+50;
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" style="max-width:460px;margin:0 auto" role="img" aria-label="Five by five risk matrix">`;
+  for(let l=1;l<=5;l++)for(let c=1;c<=5;c++){
+    const sc=l*c, lv=sc<=4?0:sc<=9?1:sc<=14?2:3;
+    s+=`<rect x="${ml+(c-1)*cs}" y="${mt+(5-l)*cs}" width="${cs-3}" height="${cs-3}" rx="3" style="fill:var(--lv${lv})" fill-opacity=".42"/>`;
+  }
+  for(let i=1;i<=5;i++){
+    s+=`<text x="${ml+(i-1)*cs+cs/2-1}" y="${mt+5*cs+15}" text-anchor="middle" class="ax">${i}</text><text x="${ml-10}" y="${mt+(5-i)*cs+cs/2+3}" text-anchor="end" class="ax">${i}</text>`;
+  }
+  s+=`<text x="${ml+cs*2.5}" y="${H-8}" text-anchor="middle" class="ax">Consequence</text><text x="14" y="${mt+cs*2.5}" transform="rotate(-90 14 ${mt+cs*2.5})" text-anchor="middle" class="ax">Likelihood</text>`;
+  const cell={}; rs.forEach(r=>{(cell[r.l+'-'+r.c]=cell[r.l+'-'+r.c]||[]).push(r)});
+  const POS={1:[[.5,.5]],2:[[.3,.5],[.7,.5]],3:[[.3,.3],[.7,.3],[.5,.72]],4:[[.3,.3],[.7,.3],[.3,.72],[.7,.72]]};
+  Object.keys(cell).forEach(k=>{
+    const [l,c]=k.split('-').map(Number), arr=cell[k], pos=POS[Math.min(4,arr.length)];
+    arr.forEach((r,i)=>{
+      const p=pos[Math.min(i,pos.length-1)], cx=ml+(c-1)*cs+p[0]*(cs-3), cy=mt+(5-l)*cs+p[1]*(cs-3);
+      s+=`<circle cx="${cx}" cy="${cy}" r="${arr.length>1?11:14}" style="fill:var(--panel);stroke:var(--ink)" stroke-width="1.5"><title>${r.h}</title></circle><text x="${cx}" y="${cy+4}" text-anchor="middle" class="ax" style="fill:var(--ink);font-weight:700">${r.id}</text>`;
+    });
+  });
+  $('#rMatrix').innerHTML=s+'</svg>';
+  $('#rRegister').innerHTML=`<table class="tbl"><thead><tr><th>ID</th><th>Hazard</th><th>L</th><th>C</th><th>Score</th><th>Level</th><th>Owner</th><th>Live basis</th></tr></thead><tbody>`+rs.map(r=>`<tr><td>${r.id}</td><td>${r.h}</td><td>${r.l}</td><td>${r.c}</td><td>${r.s}</td><td><span class="chip c${r.lv}">${RISKN[r.lv]}</span></td><td>${r.o}</td><td>${r.b}</td></tr>`).join('')+`</tbody></table>`;
+  const L=d.L, rules=[
+   ['Settlement at or above alert level',L.S>=TH[0],'Move to 2-hourly readings and check face pressure and grout fill.'],
+   ['Settlement at or above alarm level',L.S>=TH[1],'Raise face pressure toward target and slow to 8 rings/day.'],
+   ['Settlement at or above action level',L.S>=TH[2],'Stop excavation, inspect nearby buildings, prepare compensation grouting.'],
+   ['Face pressure outside the target band',Math.abs(L.P-TARGET)>BAND,'Adjust screw conveyor speed and compare muck volume with theoretical advance.'],
+   ['Grout fill below 120%',L.grout<120,'Increase tail-void grout volume and pressure, and probe for voids behind the lining.'],
+   ['Sand in the face and settlement at alert or above',L.f>0.5&&L.S>=TH[0],'Consider dewatering, ground treatment, or conditioning foam changes.'],
+   ['Any gas at alert or above',d.gmax>=1,'Follow the gas response playbook on the Gas safety page.']];
+  $('#rPlay').innerHTML=rules.map(r=>`<div class="rule"><span class="chip ${r[1]?'c2':'c0'}">${r[1]?'Triggered':'Idle'}</span><div><strong>${r[0]}</strong><div class="hint" style="margin:0">${r[2]}</div></div></div>`).join('');
+  $('#mitBox2').innerHTML=mitHTML(d);
+  $('#rAlerts').innerHTML=alertsHTML(12);
+}
+function render(){
+  const d=derive(); renderTop(d);
+  if(tab==='overview') renderOverview(d);
+  if(tab==='monitor') renderMonitor(d);
+  if(tab==='predict') renderPredict(d);
+  if(tab==='gas') renderGas(d);
+  if(tab==='risk') renderRisk(d);
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button'); if(!t) return;
+  if(t.dataset.tab){tab=t.dataset.tab;document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',b===t));['overview','monitor','predict','gas','risk','esp32'].forEach(k=>{$('#tab-'+k).hidden=k!==tab});if(tab!=='esp32')render();}
+  else if(t.dataset.sc){scen=t.dataset.sc;document.querySelectorAll('#scenSeg button').forEach(b=>b.setAttribute('aria-pressed',b===t));fresh(scen);render();}
+  else if(t.dataset.ack){const a=st.alerts.find(x=>x.id===t.dataset.ack);if(a){a.ack=true;render();}}
+  else if(t.dataset.action==='mit'){st.mit=st.mit?0:1;render();}
+  else if(t.dataset.action==='vent'){st.vboost=st.vboost?0:1;render();}
+});
+$('#liveBtn').addEventListener('click',()=>{live=!live;$('#liveBtn').textContent=live?'Pause':'Resume'});
+$('#stepBtn').addEventListener('click',()=>{step();render()});
+$('#themeBtn').addEventListener('click',()=>{
+  const r=document.documentElement, dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;
+  r.dataset.theme=dark?'light':'dark'; render();
+});
+['wiP','wiR','wiZ','wiV','wiSoil'].forEach(id=>$('#'+id).addEventListener('input',()=>updateWI()));
+$('#wiReset').addEventListener('click',()=>{
+  const L=st.hist[st.hist.length-1];
+  $('#wiP').value=clamp(Math.round(L.P),120,240);$('#wiR').value=clamp(Math.round(L.rate),4,24);$('#wiZ').value=20;$('#wiV').value=clamp(Math.round(L.vent),40,120);
+  $('#wiSoil').value=L.f>.75?'sand':L.f<.25?'clay':'mixed'; updateWI();
+});
+
+
+/* ---------- ESP32 live data bridge ---------- */
+let espTimer=null, espBusy=false;
+function fmtRaw(v){return (v===undefined||v===null||Number.isNaN(Number(v)))?'—':String(v)}
+function liveCard(label,value,unit){return `<div class="live-card"><div class="lk">${label}</div><div class="lv">${value}</div><div class="lu">${unit||''}</div></div>`}
+function renderEsp(data){
+  const risk=Math.max(0,Math.min(100,Number(data.riskScore??0)));
+  const status=String(data.status|| (risk>=50?'DANGER':risk>=25?'WARNING':'NORMAL')).toUpperCase();
+  const level=risk>=70?3:risk>=50?2:risk>=25?1:0;
+  const pill=$('#espConnection');pill.className='pill l0';pill.textContent='ESP32 CONNECTED';
+  $('#espUpdated').textContent='Last update: '+new Date().toLocaleTimeString();
+  const state=$('#espLiveState');state.className='live-state l'+level;
+  state.innerHTML=`<div class="split"><strong>${status}</strong><strong>Risk score: ${risk}/100</strong></div><div class="hint" style="margin:4px 0 0">Movement: ${data.movement?'DETECTED':'No movement'} · Water/moisture: ${data.water?'DETECTED':'Not detected'} · Rain: ${data.rain?'DETECTED':'Not detected'} · Gas: ${data.gasAlarm?'ALARM':'No alarm'}</div>`;
+  $('#espCards').innerHTML=[
+    liveCard('MPU6050 movement',data.movement?'DETECTED':'NO','status'),
+    liveCard('Soil moisture',fmtRaw(data.soilADC),'ADC'),
+    liveCard('Rain sensor',fmtRaw(data.rainADC),'ADC'),
+    liveCard('Gas sensor',fmtRaw(data.gasADC),'raw ADC'),
+    liveCard('Potentiometer',fmtRaw(data.potADC),'ADC / demo deformation'),
+    liveCard('Accelerometer X',fmtRaw(data.ax),'raw'),
+    liveCard('Accelerometer Y',fmtRaw(data.ay),'raw'),
+    liveCard('Accelerometer Z',fmtRaw(data.az),'raw')
+  ].join('');
+  $('#espJson').textContent=JSON.stringify(data,null,2);
+}
+async function pollEsp(){
+  if(espBusy)return;espBusy=true;
+  try{
+    const url=$('#espEndpoint').value.trim();
+    const response=await fetch(url+(url.includes('?')?'&':'?')+'t='+Date.now(),{cache:'no-store',mode:'cors'});
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    const data=await response.json();renderEsp(data);
+  }catch(err){
+    const pill=$('#espConnection');pill.className='pill l3';pill.textContent='CONNECTION ERROR';
+    $('#espUpdated').textContent=err.message+' — check Wi-Fi and URL';
+    $('#espLiveState').className='live-state l3';$('#espLiveState').innerHTML='<strong>Could not read ESP32 data</strong><div class="hint" style="margin:4px 0 0">Connect to the ESP32 Wi-Fi network and confirm the /data endpoint opens directly in your browser.</div>';
+  }finally{espBusy=false;}
+}
+$('#espConnect').addEventListener('click',()=>{if(espTimer)clearInterval(espTimer);pollEsp();espTimer=setInterval(pollEsp,1000)});
+$('#espDisconnect').addEventListener('click',()=>{if(espTimer)clearInterval(espTimer);espTimer=null;$('#espConnection').className='pill l0';$('#espConnection').textContent='DISCONNECTED';$('#espUpdated').textContent='Live polling stopped';});
+
+fresh('normal'); render();
+setInterval(()=>{if(live&&!document.hidden){step();render();}},1600);
+})();
+</script>
+</body>
+</html>
